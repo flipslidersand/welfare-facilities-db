@@ -49,3 +49,14 @@ export interface RegionalSummary {
   avg_facility_capacity: number
   total_revenue?: number
 }
+
+export interface CollectionLog {
+  id: number
+  script_name: string
+  status: 'running' | 'success' | 'failed' | 'skipped'
+  records_processed: number
+  error_message?: string
+  started_at: string
+  completed_at?: string
+  created_at: string
+}

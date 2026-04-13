@@ -72,7 +72,6 @@ def trigger_collection(script_name: str, db: Session = Depends(get_db)):
     """Manually trigger a data collection script"""
     if script_name == "facility":
         try:
-            log_collection("import_facility_csv", "running")
             run_facility_import()
             return {
                 "status": "triggered",
@@ -84,7 +83,6 @@ def trigger_collection(script_name: str, db: Session = Depends(get_db)):
 
     elif script_name == "financial":
         try:
-            log_collection("import_corporation_csv", "running")
             run_financial_import()
             return {
                 "status": "triggered",

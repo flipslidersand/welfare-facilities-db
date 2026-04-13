@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { analyticsAPI } from '../api/client'
-import type { RankingItem, RegionalSummary } from '../types'
+import { analyticsAPI, collectionAPI } from '../api/client'
+import type { RankingItem, RegionalSummary, CollectionLog } from '../types'
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0']
 
@@ -10,6 +10,9 @@ export default function Dashboard() {
   const [ranking, setRanking] = useState<RankingItem[]>([])
   const [regional, setRegional] = useState<RegionalSummary[]>([])
   const [summary, setSummary] = useState<any>(null)
+  const [serviceTypeStats, setServiceTypeStats] = useState<any[]>([])
+  const [topPrefectures, setTopPrefectures] = useState<any[]>([])
+  const [collectionLogs, setCollectionLogs] = useState<CollectionLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,15 +23,21 @@ export default function Dashboard() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [rankRes, regRes, sumRes] = await Promise.all([
+      const [rankRes, regRes, sumRes, stRes, tpRes, colRes] = await Promise.all([
         analyticsAPI.ranking(fiscalYear, 10),
         analyticsAPI.regional(fiscalYear),
         analyticsAPI.summary(),
+        analyticsAPI.serviceTypeStats(fiscalYear),
+        analyticsAPI.topPrefectures(fiscalYear, 'revenue', 5),
+        collectionAPI.list(0, 5),
       ])
 
       setRanking(rankRes.data.data)
       setRegional(regRes.data.data)
       setSummary(sumRes.data)
+      setServiceTypeStats(stRes.data.data || [])
+      setTopPrefectures(tpRes.data.data || [])
+      setCollectionLogs(colRes.data.data || [])
     } catch (err) {
       setError('Failed to load data')
       console.error(err)
@@ -131,6 +140,65 @@ export default function Dashboard() {
               <Legend />
             </PieChart>
           </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Service Type Stats */}
+      <div className="dashboard__chart">
+        <h2>Facilities by Service Type</h2>
+        {serviceTypeStats.length > 0 && (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={serviceTypeStats.slice(0, 10)}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="service_type" angle={-45} textAnchor="end" height={100} />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="facility_count" fill="#82ca9d" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Prefecture Revenue Trend */}
+      <div className="dashboard__chart">
+        <h2>Top 5 Prefectures Revenue Trend</h2>
+        {topPrefectures.length > 0 && (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={topPrefectures.slice(0, 5)}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="prefecture" />
+              <YAxis />
+              <Tooltip formatter={(value) => `¥${(value as number).toLocaleString()}`} />
+              <Legend />
+              <Line type="monotone" dataKey="total_revenue" stroke="#ff7c7c" name="Total Revenue" />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Collection Logs Monitor */}
+      <div className="dashboard__chart">
+        <h2>Latest Data Collection Logs</h2>
+        {collectionLogs.length > 0 && (
+          <div className="collection-logs-panel">
+            {collectionLogs.map((log) => (
+              <div key={log.id} className={`log-item log-${log.status}`}>
+                <div className="log-header">
+                  <span className="log-script">{log.script_name}</span>
+                  <span className={`log-status status-${log.status}`}>{log.status.toUpperCase()}</span>
+                </div>
+                <div className="log-details">
+                  <small>{new Date(log.started_at).toLocaleString()}</small>
+                  {log.records_processed > 0 && (
+                    <small>{log.records_processed} records</small>
+                  )}
+                  {log.error_message && (
+                    <div className="log-error">{log.error_message}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
