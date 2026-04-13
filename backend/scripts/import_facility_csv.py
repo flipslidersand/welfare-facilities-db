@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import facility data from CSV files"""
+"""Import facility data from CSV files with collection logging"""
 import os
 import sys
 import pandas as pd
@@ -8,10 +8,28 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(__file__) + '/..')
 
 from app.database import SessionLocal
-from app.models import Facility, Corporation
+from app.models import Facility, Corporation, DataCollectionLog
 
 
-def import_facilities_from_csv(csv_file_path: str, service_type: str):
+def log_collection(script_name: str, status: str, records: int = 0, error_msg: str = None):
+    """Log data collection event"""
+    db = SessionLocal()
+    try:
+        log = DataCollectionLog(
+            script_name=script_name,
+            status=status,
+            records_processed=records,
+            error_message=error_msg,
+            started_at=datetime.utcnow(),
+            completed_at=datetime.utcnow() if status != "running" else None
+        )
+        db.add(log)
+        db.commit()
+    finally:
+        db.close()
+
+
+def import_facilities_from_csv(csv_file_path: str, service_type: str, data_source: str = "介護公表"):
     """
     Import facilities from CSV file
 
@@ -109,11 +127,19 @@ def import_facilities_from_csv(csv_file_path: str, service_type: str):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python import_facility_csv.py <csv_file> [service_type]")
-        print("Example: python import_facility_csv.py facilities.csv 介護")
+        print("Usage: python import_facility_csv.py <csv_file> [service_type] [data_source]")
+        print("Example: python import_facility_csv.py facilities.csv 介護 介護公表")
+        print("Supported data_source: 介護公表, 障害公表, 児童公表")
         sys.exit(1)
 
     csv_file = sys.argv[1]
     service_type = sys.argv[2] if len(sys.argv) > 2 else "介護"
+    data_source = sys.argv[3] if len(sys.argv) > 3 else "介護公表"
 
-    import_facilities_from_csv(csv_file, service_type)
+    try:
+        log_collection("import_facility_csv", "running")
+        records = import_facilities_from_csv(csv_file, service_type, data_source)
+        log_collection("import_facility_csv", "success", records_processed=records)
+    except Exception as e:
+        log_collection("import_facility_csv", "failed", error_msg=str(e))
+        print(f"❌ Import failed: {e}")

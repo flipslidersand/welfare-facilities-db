@@ -4,8 +4,9 @@ import os
 from contextlib import asynccontextmanager
 
 from app.database import engine, Base
-from app.models import Corporation, Facility, CorporationFinancial
-from app.routers import corporations, facilities, analytics
+from app.models import Corporation, Facility, CorporationFinancial, DataCollectionLog
+from app.routers import corporations, facilities, analytics, collection_logs
+from app.scheduler import start_scheduler, stop_scheduler
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -14,8 +15,10 @@ Base.metadata.create_all(bind=engine)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("✓ Application startup")
+    start_scheduler()
     yield
     print("✓ Application shutdown")
+    stop_scheduler()
 
 
 # Initialize FastAPI app
@@ -46,6 +49,7 @@ app.add_middleware(
 app.include_router(corporations.router)
 app.include_router(facilities.router)
 app.include_router(analytics.router)
+app.include_router(collection_logs.router)
 
 
 @app.get("/")

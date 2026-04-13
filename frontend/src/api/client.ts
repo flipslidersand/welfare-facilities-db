@@ -56,6 +56,37 @@ export const analyticsAPI = {
 
   summary: () =>
     client.get('/analytics/summary'),
+
+  serviceTypeStats: (fiscalYear?: number, prefecture?: string) =>
+    client.get('/analytics/service-type-stats', {
+      params: { fiscal_year: fiscalYear, prefecture }
+    }),
+
+  yearCompare: (corporationId?: string, prefecture?: string) =>
+    client.get('/analytics/year-compare', {
+      params: { corporation_id: corporationId, prefecture }
+    }),
+
+  topPrefectures: (fiscalYear: number, metric: string = 'revenue', limit = 10) =>
+    client.get('/analytics/top-prefectures', {
+      params: { fiscal_year: fiscalYear, metric, limit }
+    }),
+}
+
+export const collectionAPI = {
+  list: (skip = 0, limit = 100, scriptName?: string, status?: string) =>
+    client.get('/collection-logs', {
+      params: { skip, limit, script_name: scriptName, status }
+    }),
+
+  detail: (logId: number) =>
+    client.get(`/collection-logs/${logId}`),
+
+  trigger: (scriptName: string) =>
+    client.post(`/collection-logs/trigger/${scriptName}`),
+
+  stats: () =>
+    client.get('/collection-logs/stats/summary'),
 }
 
 export default client

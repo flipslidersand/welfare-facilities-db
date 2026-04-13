@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, BigInteger, Date, ForeignKey, Index, DateTime
+from sqlalchemy import Column, String, Integer, BigInteger, Date, ForeignKey, Index, DateTime, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -83,4 +83,25 @@ class CorporationFinancial(Base):
         Index("idx_financial_corporation_year", "corporation_id", "fiscal_year"),
         Index("idx_financial_corporation", "corporation_id"),
         Index("idx_financial_year", "fiscal_year"),
+    )
+
+
+class DataCollectionLog(Base):
+    """データ収集実行ログ"""
+    __tablename__ = "data_collection_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    script_name = Column(String(100), nullable=False, comment="スクリプト名（import_corporation_csv等）")
+    status = Column(String(20), nullable=False, comment="ステータス（running/success/failed）")
+    records_processed = Column(Integer, comment="処理件数")
+    error_message = Column(Text, comment="エラーメッセージ")
+    started_at = Column(DateTime, nullable=False, default=datetime.utcnow, comment="開始時刻")
+    completed_at = Column(DateTime, comment="完了時刻")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Indexes
+    __table_args__ = (
+        Index("idx_collection_logs_script", "script_name"),
+        Index("idx_collection_logs_status", "status"),
+        Index("idx_collection_logs_started", "started_at"),
     )
