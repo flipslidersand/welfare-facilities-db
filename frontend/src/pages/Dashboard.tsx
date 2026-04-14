@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { analyticsAPI, collectionAPI } from '../api/client'
-import type { RankingItem, RegionalSummary, CollectionLog } from '../types'
+import { analyticsAPI, collectionAPI, monitoringAPI } from '../api/client'
+import type { RankingItem, RegionalSummary, CollectionLog, SystemMetrics } from '../types'
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0']
 
@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [serviceTypeStats, setServiceTypeStats] = useState<any[]>([])
   const [topPrefectures, setTopPrefectures] = useState<any[]>([])
   const [collectionLogs, setCollectionLogs] = useState<CollectionLog[]>([])
+  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,13 +24,14 @@ export default function Dashboard() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [rankRes, regRes, sumRes, stRes, tpRes, colRes] = await Promise.all([
+      const [rankRes, regRes, sumRes, stRes, tpRes, colRes, monRes] = await Promise.all([
         analyticsAPI.ranking(fiscalYear, 10),
         analyticsAPI.regional(fiscalYear),
         analyticsAPI.summary(),
         analyticsAPI.serviceTypeStats(fiscalYear),
         analyticsAPI.topPrefectures(fiscalYear, 'revenue', 5),
         collectionAPI.list(0, 5),
+        monitoringAPI.metrics(),
       ])
 
       setRanking(rankRes.data.data)
@@ -38,6 +40,7 @@ export default function Dashboard() {
       setServiceTypeStats(stRes.data.data || [])
       setTopPrefectures(tpRes.data.data || [])
       setCollectionLogs(colRes.data.data || [])
+      setSystemMetrics(monRes.data)
     } catch (err) {
       setError('Failed to load data')
       console.error(err)
@@ -198,6 +201,59 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* System Monitoring */}
+      <div className="dashboard__chart">
+        <h2>System Monitoring</h2>
+        {systemMetrics && (
+          <div className="metrics-section">
+            <div className="metrics-grid">
+              <div className="metric-card">
+                <div className="metric-value">{systemMetrics.memory_rss_mb}</div>
+                <div className="metric-label">Memory RSS (MB)</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-value">
+                  {systemMetrics.latest_backup
+                    ? new Date(systemMetrics.latest_backup.created_at).toLocaleDateString()
+                    : 'No backups'}
+                </div>
+                <div className="metric-label">Latest Backup</div>
+              </div>
+              <div className="metric-card metric-card--link">
+                <a href={systemMetrics.prometheus_url} target="_blank" rel="noopener noreferrer">
+                  <div className="metric-value">Prometheus</div>
+                  <div className="metric-label">Open Metrics Explorer</div>
+                </a>
+              </div>
+              <div className="metric-card metric-card--link">
+                <a href={systemMetrics.grafana_url} target="_blank" rel="noopener noreferrer">
+                  <div className="metric-value">Grafana</div>
+                  <div className="metric-label">Open Dashboard</div>
+                </a>
+              </div>
+            </div>
+
+            {/* Backup File List */}
+            {systemMetrics.backup_files.length > 0 && (
+              <div className="backup-list">
+                <h3>Recent Backups</h3>
+                {systemMetrics.backup_files.map((f) => (
+                  <div key={f.filename} className="backup-item">
+                    <span className="backup-filename">{f.filename}</span>
+                    <span className="backup-size">
+                      {(f.size_bytes / (1024 * 1024)).toFixed(2)} MB
+                    </span>
+                    <span className="backup-date">
+                      {new Date(f.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

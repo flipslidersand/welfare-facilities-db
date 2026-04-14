@@ -7,8 +7,10 @@ import subprocess
 import sys
 import os
 import httpx
+from pathlib import Path
 from app.database import SessionLocal
 from app.models import DataCollectionLog
+from scripts.backup_db import run_backup, cleanup_old_backups
 
 scheduler = BackgroundScheduler()
 
@@ -102,6 +104,36 @@ def run_facility_import():
                 return
 
 
+def run_daily_backup():
+    """Daily database backup (2:00 AM UTC)"""
+    script_name = "backup_db"
+    log_collection(script_name, "running")
+
+    try:
+        # 1. Run backup
+        success, filename, detail = run_backup()
+        if not success:
+            raise RuntimeError(f"pg_dump failed: {detail}")
+
+        # 2. Cleanup old backups
+        retention_days = int(os.getenv("BACKUP_RETENTION_DAYS", "7"))
+        deleted = cleanup_old_backups(retention_days)
+
+        # 3. Success logging
+        log_collection(script_name, "success", records=1)
+        msg = f"DB backup succeeded: {filename} ({detail})"
+        if deleted:
+            msg += f"\nDeleted {len(deleted)} old backups"
+        notify_slack(f"✅ {msg}")
+        print(f"✓ {msg}")
+
+    except Exception as e:
+        error_msg = str(e)
+        log_collection(script_name, "failed", error_msg=error_msg)
+        notify_slack(f"❌ DB backup failed:\n{error_msg}")
+        print(f"❌ DB backup failed: {error_msg}")
+
+
 def run_financial_import():
     """Annual financial data import (April 1 at 2:00)"""
     script_name = "import_corporation_csv"
@@ -159,6 +191,14 @@ def run_financial_import():
 
 def init_scheduler():
     """Initialize background scheduler"""
+    # Daily: 2:00 AM UTC (backup)
+    scheduler.add_job(
+        run_daily_backup,
+        CronTrigger(hour=2, minute=0),
+        id="daily_backup",
+        name="Daily Database Backup"
+    )
+
     # Monthly: every 1st day at 3:00 AM
     scheduler.add_job(
         run_facility_import,
@@ -175,7 +215,7 @@ def init_scheduler():
         name="Annual Financial Data Import"
     )
 
-    print("✓ Scheduler initialized with 2 jobs")
+    print("✓ Scheduler initialized with 3 jobs")
 
 
 def start_scheduler():

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Corporation, Facility, RankingItem, RegionalSummary } from '../types'
+import type { Corporation, Facility, RankingItem, RegionalSummary, SystemMetrics } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
@@ -87,6 +87,11 @@ export const collectionAPI = {
 
   stats: () =>
     client.get('/collection-logs/stats/summary'),
+}
+
+export const monitoringAPI = {
+  metrics: () =>
+    client.get<SystemMetrics>('/monitoring/metrics'),
 }
 
 export default client

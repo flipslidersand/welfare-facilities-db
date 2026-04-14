@@ -60,3 +60,19 @@ export interface CollectionLog {
   completed_at?: string
   created_at: string
 }
+
+export interface BackupFile {
+  filename: string
+  size_bytes: number
+  created_at: string
+}
+
+export interface SystemMetrics {
+  timestamp: string
+  memory_rss_mb: number
+  uptime_seconds?: number
+  backup_files: BackupFile[]
+  latest_backup?: BackupFile
+  prometheus_url: string
+  grafana_url: string
+}

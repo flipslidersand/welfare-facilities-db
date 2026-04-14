@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: devpass
       POSTGRES_DB: welfare_facilities_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -24,6 +24,13 @@ services:
     environment:
       DATABASE_URL: postgresql://dev:devpass@db:5432/welfare_facilities_db
       DEBUG: "true"
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: "7"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: welfare_facilities_db
+      DB_USER: dev
+      DB_PASSWORD: devpass
     ports:
       - "8000:8000"
     depends_on:
@@ -31,6 +38,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - backups:/backups
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -47,5 +55,42 @@ services:
       - /app/node_modules
     command: npm run dev
 
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: welfare-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: welfare-grafana
+    ports:
+      - "3002:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  prometheus_data:
+  grafana_data:
+  backups:

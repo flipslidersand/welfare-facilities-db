@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'welfare-facilities-db'
+    orgId: 1
+    folder: 'Welfare DB'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
