@@ -9,6 +9,13 @@ from typing import Optional
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
 
+def get_uptime_seconds():
+    """Calculate uptime in seconds from application startup time."""
+    from app.main import APP_START_TIME
+    uptime = (datetime.utcnow() - APP_START_TIME).total_seconds()
+    return round(uptime, 2)
+
+
 class BackupFile:
     def __init__(self, path: Path):
         self.filename = path.name
@@ -45,7 +52,7 @@ def get_system_metrics():
     return {
         "timestamp": datetime.utcnow().isoformat(),
         "memory_rss_mb": memory_rss_mb,
-        "uptime_seconds": None,  # Can be calculated from app startup time if needed
+        "uptime_seconds": get_uptime_seconds(),
         "backup_files": backups,
         "latest_backup": backups[0] if backups else None,
         "prometheus_url": "http://localhost:9091",

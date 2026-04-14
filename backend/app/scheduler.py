@@ -1,17 +1,20 @@
 """Background scheduler for data collection tasks"""
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 from datetime import datetime
 import asyncio
 import subprocess
 import sys
 import os
 import httpx
+import logging
 from pathlib import Path
 from app.database import SessionLocal
 from app.models import DataCollectionLog
 from scripts.backup_db import run_backup, cleanup_old_backups
 
+logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
 
 
@@ -189,6 +192,21 @@ def run_financial_import():
                 return
 
 
+def scheduler_event_listener(event):
+    """Log scheduler job execution events"""
+    if event.exception:
+        logger.error("scheduler_job_error", extra={
+            "job_id": event.job_id,
+            "job_name": event.job_name,
+            "error": str(event.exception)
+        })
+    else:
+        logger.info("scheduler_job_success", extra={
+            "job_id": event.job_id,
+            "job_name": event.job_name
+        })
+
+
 def init_scheduler():
     """Initialize background scheduler"""
     # Daily: 2:00 AM UTC (backup)
@@ -215,7 +233,10 @@ def init_scheduler():
         name="Annual Financial Data Import"
     )
 
-    print("✓ Scheduler initialized with 3 jobs")
+    # Add event listener for job execution logging
+    scheduler.add_listener(scheduler_event_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
+
+    logger.info("scheduler_initialized", extra={"job_count": 3})
 
 
 def start_scheduler():

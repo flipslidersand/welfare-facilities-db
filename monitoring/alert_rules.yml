@@ -1,0 +1,54 @@
+groups:
+  - name: welfare_alerts
+    interval: 30s
+    rules:
+      # Backend Service Status
+      - alert: BackendDown
+        expr: up{job="welfare-backend"} == 0
+        for: 1m
+        annotations:
+          summary: "Welfare backend is down"
+          description: "Backend service at {{ $labels.instance }} has been unavailable for more than 1 minute"
+          severity: critical
+
+      # HTTP Error Rate
+      - alert: HighErrorRate
+        expr: >
+          (
+            sum(rate(http_requests_total{job="welfare-backend", status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="welfare-backend"}[5m]))
+          ) > 0.05
+        for: 2m
+        annotations:
+          summary: "High HTTP error rate on backend"
+          description: "5xx error rate is {{ $value | humanizePercentage }} for backend"
+          severity: warning
+
+      # Request Latency
+      - alert: HighLatency
+        expr: >
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="welfare-backend"}[5m])) by (le)) > 2
+        for: 5m
+        annotations:
+          summary: "High request latency on backend"
+          description: "P95 latency is {{ $value | humanizeDuration }} for backend"
+          severity: warning
+
+      # Memory Usage
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job="welfare-backend"} / 1024 / 1024 > 512
+        for: 5m
+        annotations:
+          summary: "High memory usage on backend"
+          description: "Backend memory usage is {{ $value | humanize }}MB"
+          severity: warning
+
+      # Database Queries (Simple metric for demonstration)
+      - alert: NoDatabaseActivity
+        expr: increase(http_requests_total{job="welfare-backend"}[1h]) == 0
+        for: 5m
+        annotations:
+          summary: "No database activity detected"
+          description: "No requests processed in the last hour"
+          severity: info
