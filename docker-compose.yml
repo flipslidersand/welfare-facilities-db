@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     container_name: welfare-db
     environment:
-      POSTGRES_USER: dev
-      POSTGRES_PASSWORD: devpass
-      POSTGRES_DB: welfare_facilities_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5434:5432"
     volumes:
@@ -22,15 +22,16 @@ services:
     build: ./backend
     container_name: welfare-api
     environment:
-      DATABASE_URL: postgresql://dev:devpass@db:5432/welfare_facilities_db
-      DEBUG: "true"
-      BACKUP_DIR: /backups
-      BACKUP_RETENTION_DAYS: "7"
+      DATABASE_URL: ${DATABASE_URL}
+      DEBUG: ${DEBUG:-false}
+      BACKUP_DIR: ${BACKUP_DIR:-/backups}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
       DB_HOST: db
       DB_PORT: "5432"
-      DB_NAME: welfare_facilities_db
-      DB_USER: dev
-      DB_PASSWORD: devpass
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      API_KEY: ${API_KEY}
     ports:
       - "8000:8000"
     depends_on:
@@ -94,7 +95,7 @@ services:
     ports:
       - "3002:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_PATHS_PROVISIONING: /etc/grafana/provisioning
     volumes:
