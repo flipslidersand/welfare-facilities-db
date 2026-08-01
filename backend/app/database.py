@@ -5,6 +5,9 @@ from sqlalchemy.pool import QueuePool
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./welfare_facilities.db")
+# Render provides postgres:// but SQLAlchemy requires postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 engine = create_engine(
     DATABASE_URL,
