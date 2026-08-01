@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 import os
@@ -14,6 +14,7 @@ from app.database import engine, Base
 from app.models import Corporation, Facility, CorporationFinancial, DataCollectionLog
 from app.routers import corporations, facilities, analytics, collection_logs, monitoring
 from app.scheduler import start_scheduler, stop_scheduler
+from app.auth import require_api_key
 
 # Setup structured logging
 handler = logging.StreamHandler()
@@ -87,12 +88,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(corporations.router)
-app.include_router(facilities.router)
-app.include_router(analytics.router)
-app.include_router(collection_logs.router)
-app.include_router(monitoring.router)
+# Include routers (all /api/* require API key)
+_auth = [Depends(require_api_key)]
+app.include_router(corporations.router, dependencies=_auth)
+app.include_router(facilities.router, dependencies=_auth)
+app.include_router(analytics.router, dependencies=_auth)
+app.include_router(collection_logs.router, dependencies=_auth)
+app.include_router(monitoring.router, dependencies=_auth)
 
 
 @app.get("/")
