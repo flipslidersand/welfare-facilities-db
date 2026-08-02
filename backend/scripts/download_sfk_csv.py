@@ -25,9 +25,20 @@ KNOWN_INDICES = [
 
 
 def latest_yearmonth() -> str:
-    """Return current year-month as YYYYMM (data lags ~3 months)."""
+    """Scrape WAM NET page to get the latest available yearmonth (YYYYMM)."""
+    import re
+    page_url = "https://www.wam.go.jp/content/wamnet/pcpub/top/sfkopendata/"
+    try:
+        resp = requests.get(page_url, timeout=15)
+        html = resp.content.decode("shift-jis", errors="replace")
+        # Extract YYYYMM from download link patterns e.g. /sfkopendata/202603/
+        matches = re.findall(r"/sfkopendata/(\d{6})/", html)
+        if matches:
+            return max(matches)
+    except Exception:
+        pass
+    # Fallback: 3-month lag heuristic
     today = date.today()
-    # WAM NET publishes data with ~3 month lag
     month = today.month - 3
     year = today.year
     if month <= 0:
