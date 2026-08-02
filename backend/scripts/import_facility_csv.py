@@ -98,12 +98,19 @@ def import_facilities_from_csv(csv_file_path: str, service_type: str, data_sourc
 
         db = SessionLocal()
         count = 0
+        seen_corporations: set = set()
+        seen_facilities: set = set()
 
         for _, raw_row in df.iterrows():
             row = _normalize_row(raw_row)
             facility_id = row.get("facility_id", "").strip()
             if not facility_id:
                 continue
+
+            # Skip duplicates within the same CSV (same facility_id, different rows)
+            if facility_id in seen_facilities:
+                continue
+            seen_facilities.add(facility_id)
 
             existing = db.query(Facility).filter_by(facility_id=facility_id).first()
             corporation_id = row.get("corporation_id", "").strip() or None
@@ -145,14 +152,16 @@ def import_facilities_from_csv(csv_file_path: str, service_type: str, data_sourc
                 )
                 db.add(facility)
 
-            if corporation_id and not db.query(Corporation).filter_by(corporation_id=corporation_id).first():
-                corporation = Corporation(
-                    corporation_id=corporation_id,
-                    name=row.get("corporation_name", "Unknown"),
-                    prefecture=row.get("prefecture", ""),
-                    updated_at=datetime.utcnow(),
-                )
-                db.add(corporation)
+            if corporation_id and corporation_id not in seen_corporations:
+                seen_corporations.add(corporation_id)
+                if not db.query(Corporation).filter_by(corporation_id=corporation_id).first():
+                    corporation = Corporation(
+                        corporation_id=corporation_id,
+                        name=row.get("corporation_name", "Unknown"),
+                        prefecture=row.get("prefecture", ""),
+                        updated_at=datetime.utcnow(),
+                    )
+                    db.add(corporation)
 
             count += 1
 
@@ -180,7 +189,7 @@ if __name__ == "__main__":
     try:
         log_collection("import_facility_csv", "running")
         records = import_facilities_from_csv(csv_file, service_type, data_source)
-        log_collection("import_facility_csv", "success", records_processed=records)
+        log_collection("import_facility_csv", "success", records=records)
     except Exception as e:
         log_collection("import_facility_csv", "failed", error_msg=str(e))
         print(f"❌ Import failed: {e}")
