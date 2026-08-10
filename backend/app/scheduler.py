@@ -9,6 +9,7 @@ import sys
 import os
 import httpx
 import logging
+import pytz
 from pathlib import Path
 from app.database import SessionLocal
 from app.models import DataCollectionLog
@@ -16,6 +17,9 @@ from scripts.backup_db import run_backup, cleanup_old_backups
 
 logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
+
+# Japan Standard Time timezone
+JST = pytz.timezone('Asia/Tokyo')
 
 
 def notify_slack(message: str):
@@ -209,26 +213,26 @@ def scheduler_event_listener(event):
 
 def init_scheduler():
     """Initialize background scheduler"""
-    # Daily: 2:00 AM UTC (backup)
+    # Daily: 2:00 AM JST (backup)
     scheduler.add_job(
         run_daily_backup,
-        CronTrigger(hour=2, minute=0),
+        CronTrigger(hour=2, minute=0, timezone=JST),
         id="daily_backup",
         name="Daily Database Backup"
     )
 
-    # Monthly: every 1st day at 3:00 AM
+    # Monthly: every 1st day at 3:00 AM JST
     scheduler.add_job(
         run_facility_import,
-        CronTrigger(day=1, hour=3, minute=0),
+        CronTrigger(day=1, hour=3, minute=0, timezone=JST),
         id="facility_import",
         name="Monthly Facility Data Import"
     )
 
-    # Yearly: April 1 at 2:00 AM (Japan fiscal year start)
+    # Yearly: April 1 at 2:00 AM JST (Japan fiscal year start)
     scheduler.add_job(
         run_financial_import,
-        CronTrigger(month=4, day=1, hour=2, minute=0),
+        CronTrigger(month=4, day=1, hour=2, minute=0, timezone=JST),
         id="financial_import",
         name="Annual Financial Data Import"
     )
