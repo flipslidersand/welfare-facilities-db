@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, BigInteger, Date, ForeignKey, Index, DateTime, Text
+from sqlalchemy import Column, String, Integer, BigInteger, Date, ForeignKey, Index, DateTime, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -104,4 +104,23 @@ class DataCollectionLog(Base):
         Index("idx_collection_logs_script", "script_name"),
         Index("idx_collection_logs_status", "status"),
         Index("idx_collection_logs_started", "started_at"),
+    )
+
+
+class ApiKey(Base):
+    """API キー管理"""
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key_hash = Column(String(255), nullable=False, unique=True, comment="ハッシュ化されたAPI キー")
+    name = Column(String(100), nullable=False, comment="キー名（識別用）")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, comment="作成日時")
+    expires_at = Column(DateTime, nullable=True, comment="有効期限（NULLの場合は無期限）")
+    last_used_at = Column(DateTime, nullable=True, comment="最後に使用した日時")
+    is_active = Column(Boolean, default=True, nullable=False, comment="有効/無効フラグ")
+
+    # Indexes
+    __table_args__ = (
+        Index("idx_api_keys_key_hash", "key_hash", unique=True),
+        Index("idx_api_keys_is_active", "is_active"),
     )
