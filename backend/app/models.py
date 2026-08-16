@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, BigInteger, Date, ForeignKey, Index, DateTime, Text, Boolean
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from .database import Base
 
 
@@ -112,15 +112,16 @@ class ApiKey(Base):
     __tablename__ = "api_keys"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    key_hash = Column(String(255), nullable=False, unique=True, comment="ハッシュ化されたAPI キー")
-    name = Column(String(100), nullable=False, comment="キー名（識別用）")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, comment="作成日時")
-    expires_at = Column(DateTime, nullable=True, comment="有効期限（NULLの場合は無期限）")
-    last_used_at = Column(DateTime, nullable=True, comment="最後に使用した日時")
-    is_active = Column(Boolean, default=True, nullable=False, comment="有効/無効フラグ")
+    key_hash = Column(String(256), nullable=False, unique=True, comment="ハッシング済みキー")
+    name = Column(String(100), nullable=False, comment="キー名")
+    is_active = Column(Boolean, default=True, nullable=False, comment="有効/無効")
+    expires_at = Column(DateTime, nullable=True, comment="有効期限")
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_used_at = Column(DateTime, nullable=True, comment="最後に使用した時刻")
+    usage_count = Column(Integer, default=0, comment="使用回数")
 
     # Indexes
     __table_args__ = (
-        Index("idx_api_keys_key_hash", "key_hash", unique=True),
+        Index("idx_api_keys_key_hash", "key_hash"),
         Index("idx_api_keys_is_active", "is_active"),
     )
