@@ -20,9 +20,16 @@ from app.models import Corporation, Facility, CorporationFinancial
 
 target_metadata = Base.metadata
 
+def _get_database_url() -> str:
+    url = os.getenv("DATABASE_URL", "sqlite:///./welfare_facilities.db")
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
-    url = os.getenv("DATABASE_URL", "sqlite:///./welfare_facilities.db")
+    url = _get_database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -36,7 +43,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    url = os.getenv("DATABASE_URL", "sqlite:///./welfare_facilities.db")
+    url = _get_database_url()
 
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = url
