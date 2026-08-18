@@ -9,7 +9,7 @@ Looker Studio を使用して、PostgreSQL データベースの福祉施設デ�
 ### 1. Looker Studio 用ユーザーとビューの作成
 
 ```bash
-cd /home/dev-nodee/projects/welfare-facilities-db/backend
+cd ~/projects/welfare-facilities-db/backend
 
 # データベース環境変数を設定
 export DB_HOST=localhost
